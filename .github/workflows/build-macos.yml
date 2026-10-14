@@ -1,0 +1,62 @@
+name: macOS build
+
+on:
+  push:
+    branches: [ main, ci ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  # MTENGINE_REF holds a BRANCH by default (`origin/master`), and a branch is
+  # tracked rather than pinned -- CI clones it fresh every run, so it always
+  # matches and this flag is inert. The flag stays because it stops being inert
+  # the moment MTENGINE_REF is set to a SHA to freeze an engine for a release:
+  # then a checkout that does not match the pin must fail the run, not warn.
+  MTENGINE_PIN_STRICT: '1'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    # Both logging configurations on every push: the "off" leg compiles the
+    # shipping shape (MT_DEBUG_LOGS=0), which used to be discovered at release.
+    strategy:
+      fail-fast: false
+      matrix:
+        logs: ["on", "off"]
+
+    steps:
+      - name: Checkout MTEngineSDLTemplateApp
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        # nasm, for the x86_64 half of the universal video-codec build. libvpx
+        # has no assembler-less fallback the way FFmpeg's --disable-x86asm is,
+        # so without this its configure stops at "Neither yasm nor nasm have
+        # been found" -- inside an Xcode script phase, where the message is
+        # nearly unfindable. GitHub's arm64 macOS image does not ship one.
+        run: brew list nasm >/dev/null 2>&1 || brew install nasm
+
+      - name: Build
+        run: |
+          chmod +x ./build-macos.sh
+          ./build-macos.sh --logs ${{ matrix.logs }}
+
+      - name: mtcaps golden tests
+        run: |
+          # tools/mtcaps is the single point of failure for the whole capability
+          # system, so its own tests run before anything that depends on it.
+          python3 ../MTEngineSDL/tools/mtcaps/tests/test_mtcaps.py
+
+      - name: Run tests (both suites)
+        run: |
+          # Chunk 0.6. See the Linux job -- these workflows ran no tests at all.
+          chmod +x ./tests/run_test.sh
+          ./tests/run_test.sh --skip-build
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: MTEngineSDLTemplateApp-macos-logs-${{ matrix.logs }}
+          path: build-macos/Build/Products/Release/MTEngineSDLTemplateApp.app/Contents/MacOS/MTEngineSDLTemplateApp
+          if-no-files-found: error

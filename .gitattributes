@@ -1,0 +1,13 @@
+# The commit-msg hook must keep LF endings, on every platform.
+#
+# Git for Windows defaults to core.autocrlf=true, which rewrites LF to CRLF on
+# checkout. A shell script survives that everywhere except its first line: the
+# shebang becomes "#!/bin/sh\r", and the kernel -- or Git's own sh on Windows --
+# looks for an interpreter whose name ends in a carriage return and does not
+# find one. The hook then fails with "bad interpreter", which on a commit-msg
+# hook reads as the gate being broken rather than the file being mangled.
+#
+# Scoped to the hooks directory on purpose. A blanket rule here would restate
+# line endings for every tracked file, including vendored third-party trees,
+# and produce a checkout-wide diff nobody asked for.
+claude/githooks/* text eol=lf

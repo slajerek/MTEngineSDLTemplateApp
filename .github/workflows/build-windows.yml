@@ -1,0 +1,119 @@
+name: Windows build
+
+on:
+  push:
+    branches: [ main, ci ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  # MTENGINE_REF holds a BRANCH by default (`origin/master`), and a branch is
+  # tracked rather than pinned -- CI clones it fresh every run, so it always
+  # matches and this flag is inert. The flag stays because it stops being inert
+  # the moment MTENGINE_REF is set to a SHA to freeze an engine for a release:
+  # then a checkout that does not match the pin must fail the run, not warn.
+  MTENGINE_PIN_STRICT: '1'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    # Both logging configurations on every push: the "off" leg compiles the
+    # shipping shape (MT_DEBUG_LOGS=0), which used to be discovered at release.
+    strategy:
+      fail-fast: false
+      matrix:
+        logs: ["on", "off"]
+
+    steps:
+      - name: Checkout MTEngineSDLTemplateApp
+        uses: actions/checkout@v4
+
+      - name: Clone MTEngineSDL
+        shell: pwsh
+        run: |
+          $mtDir = Join-Path (Split-Path -Parent $env:GITHUB_WORKSPACE) 'MTEngineSDL'
+          # NOT --recursive: the pin is what makes a CI result mean something, and
+          # a recursive clone pre-fetches the submodules Phase 4's clean-clone
+          # proof exists to show absent.
+          $mtRef = (Get-Content MTENGINE_REF | Where-Object { $_ -notmatch '^\s*#' -and $_.Trim() -ne '' } | Select-Object -First 1).Trim()
+          git clone https://github.com/slajerek/MTEngineSDL.git $mtDir
+          git -C $mtDir checkout --detach $mtRef
+
+      - name: MSYS2 prerequisites for the codec builds
+        shell: pwsh
+        run: |
+          # FFmpeg is configured OUT OF TREE, and its configure then writes a
+          # one-line Makefile that includes the source Makefile by ABSOLUTE
+          # MSYS2 path (/c/Users/...). Only an MSYS2 make can read that: a
+          # native Windows make reads /c/Users as C:\c\Users and stops with
+          # "No rule to make target", naming FFmpeg's own Makefile -- which is
+          # how this runner failed on 2026-09-03 (run 33742482983), looking for
+          # all the world like a broken extraction. libvpx sails through the
+          # same shell because ITS generated Makefile says `include config.mk`,
+          # relative, which any make resolves.
+          #
+          # The engine's build-video_codecs.ps1 now names /usr/bin/make
+          # absolutely, so PATH order can no longer decide this. That leaves one
+          # requirement, and it is this step: MSYS2 must HAVE make. It is not
+          # part of a base MSYS2 install -- it is the documented
+          # `pacman -S --needed make` prerequisite -- and no runner image is
+          # contracted to carry it.
+          $msys2 = if ($env:MSYS2_ROOT) { $env:MSYS2_ROOT } else { 'C:\msys64' }
+          $bash  = Join-Path $msys2 'usr\bin\bash.exe'
+          $make  = Join-Path $msys2 'usr\bin\make.exe'
+          if (-not (Test-Path $bash)) { throw "MSYS2 not found at $msys2 (expected $bash). The codec builds need it." }
+          if (-not (Test-Path $make)) {
+            & (Join-Path $msys2 'usr\bin\pacman.exe') -Sy --needed --noconfirm make diffutils pkgconf
+          }
+          if (-not (Test-Path $make)) { throw "MSYS2's make is still missing at $make after pacman ran." }
+          # Printed, not assumed. These two lines say whether the make that
+          # PATH resolves to was the native one all along -- the question this
+          # run would otherwise leave open again. GNU make's SECOND line is the
+          # discriminator: "Built for x86_64-pc-msys" against "Built for
+          # Windows32". Reported from PowerShell rather than from an echo with
+          # embedded quotes, which Windows PowerShell mangles on its way to a
+          # native exe.
+          $msysMakeVer = (& $bash --noprofile --norc -c '/usr/bin/make --version') | Select-Object -First 2
+          $pathMake    = (& $bash --noprofile --norc -c 'command -v make || echo none') | Select-Object -First 1
+          $pathMakeVer = (& $bash --noprofile --norc -c 'make --version 2>/dev/null || true') | Select-Object -First 2
+          Write-Host "msys2 make : $($msysMakeVer -join ' / ')"
+          Write-Host "PATH  make : $pathMake -> $($pathMakeVer -join ' / ')"
+          $global:LASTEXITCODE = 0
+
+      - name: Build
+        shell: pwsh
+        run: .\build-windows.ps1 -Logs ${{ matrix.logs }}
+
+      - name: mtcaps golden tests
+        shell: pwsh
+        run: |
+          # tools/mtcaps is the single point of failure for the whole capability
+          # system, so its own tests run before anything that depends on it.
+          #
+          # `py -3` where it exists, `python` otherwise: this runner's default
+          # shell is pwsh, and `python3` is not a reliable name on the Windows
+          # images. Same resolved-interpreter rule the build scripts follow --
+          # never a bare guess.
+          $mtDir = Join-Path (Split-Path -Parent $env:GITHUB_WORKSPACE) 'MTEngineSDL'
+          $t = Join-Path $mtDir 'tools\mtcaps\tests\test_mtcaps.py'
+          if (Get-Command py -ErrorAction SilentlyContinue) { py -3 $t } else { python $t }
+          if ($LASTEXITCODE -ne 0) { throw "mtcaps golden tests failed" }
+
+      - name: Run tests (both suites)
+        shell: pwsh
+        run: |
+          # Chunk 0.6. bash is present on windows-latest runners, and the runner
+          # script only needs to launch a binary and parse a text file.
+          # Forward slashes, quoted: the argument is handed to BASH, which
+          # treats a backslash as an escape, and the runner now makes --binary
+          # absolute with dirname/basename -- neither survives `.\a\b`. Windows
+          # accepts forward slashes everywhere a path is taken.
+          bash ./tests/run_test.sh --binary 'platform/Windows/bin/x64/Release/MTEngineSDLTemplateApp.exe'
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: MTEngineSDLTemplateApp-windows-logs-${{ matrix.logs }}
+          path: platform\Windows\bin\x64\Release\MTEngineSDLTemplateApp.exe
+          if-no-files-found: error

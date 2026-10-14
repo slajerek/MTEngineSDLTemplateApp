@@ -1,0 +1,91 @@
+# MTEngineSDLTemplateApp -- MTEngineSDL capability manifest
+#
+# KEY=VALUE, values 0 or 1, whole-line comments only (an inline comment is read
+# as part of the value by PowerShell). Every capability is listed: an unlisted
+# key takes the engine default, and most defaults are 1.
+#
+# Turning a capability on: set it to 1 and set every capability it implies to 1
+# as well (MTEngineSDL/docs/CAPABILITIES.md lists the implications). Turning one
+# off that an enabled one implies is a configure-time error.
+
+# CAMERA: Live camera capture.
+MT_CAP_CAMERA=0
+
+# COLOR_MANAGEMENT: Colour-management engines and DCP profile handling (Color/).
+MT_CAP_COLOR_MANAGEMENT=0
+
+# CRASH_REPORTER: Crash reporting (MT_CrashReporter).
+MT_CAP_CRASH_REPORTER=1
+
+# DEVELOP: RAW development maths and pipeline (Develop/).
+MT_CAP_DEVELOP=0
+
+# FTXUI: Terminal UI toolkit, linked and used directly by the app.
+MT_CAP_FTXUI=0
+
+# GAMEPADS: Gamepad support: the SDL gamepad layer and Core/GamePads.
+MT_CAP_GAMEPADS=0
+
+# HTTP: Plain HTTP client (cpp-httplib) and the shared file downloader.
+MT_CAP_HTTP=0
+
+# HTTPS: TLS for the HTTP client, via mbedTLS.
+MT_CAP_HTTPS=0
+
+# KTX2: KTX2 / basis_universal texture transcoding.
+MT_CAP_KTX2=0
+
+# LLM: Local large-language-model inference via llama.cpp, plus model discovery and download.
+MT_CAP_LLM=0
+
+# MIDI: MIDI input and output via rtmidi.
+MT_CAP_MIDI=0
+
+# MUSIC_PLAYER: Music player and playlists: Ogg via Tremor, MP3/FLAC/WAV via miniaudio, AAC/ALAC via the OS decoder where one exists.
+MT_CAP_MUSIC_PLAYER=0
+
+# NET_GAME: Networked-game session layer (Tools/NetGame).
+MT_CAP_NET_GAME=0
+
+# NET_TRANSPORT: Reliable UDP transport (ENet) and Core/Net.
+MT_CAP_NET_TRANSPORT=0
+
+# OPENCV: OpenCV 5 core, imgproc, geometry and features, built from the pinned source tarball.
+MT_CAP_OPENCV=0
+
+# OPENCV_NONFREE: opencv_contrib xfeatures2d built with OPENCV_ENABLE_NONFREE: SURF (patented) plus FREAK, BRIEF and DAISY, which left the main repository in 5.
+MT_CAP_OPENCV_NONFREE=0
+
+# PHOTO_CODECS: Still-image codecs beyond the core set: TIFF, WebP, AVIF, HEIF and the ISO 21496-1 gain-map JPEG (libultrahdr).
+MT_CAP_PHOTO_CODECS=0
+
+# RAW: Camera RAW decoding via LibRaw.
+MT_CAP_RAW=0
+
+# TERMINAL: Embedded terminal emulator: libtmt and GUI/Controls/CGuiViewTerminal.
+MT_CAP_TERMINAL=0
+
+# TEST_ENGINE: imgui_test_engine UI-automation harness.
+MT_CAP_TEST_ENGINE=1
+
+# UNDO: Undo/redo framework (Tools/Undo).
+MT_CAP_UNDO=0
+
+# VIDEO_PLAYBACK: Video decoding and playback: FFmpeg, libvpx, opus, nestegg, and the platform hardware decoders.
+MT_CAP_VIDEO_PLAYBACK=0
+
+# WEBSOCKETS: WebSocket server/client via uWebSockets on uSockets.
+MT_CAP_WEBSOCKETS=0
+
+# YOLO: Object detection: OpenCV 5's dnn module, an ONNX model catalogue and a downloader.
+MT_CAP_YOLO=0
+
+# Licence tier. Keep 0 here. A commercial package is cut by
+# build-*-prod-commercial, which passes --tier commercial so the driver sets
+# MT_COMMERCIAL_BUILD=1 for that build only. Writing 1 here makes every dev
+# build commercial, and a commercial build forces MT_CAP_TEST_ENGINE off --
+# the smoke test would silently disappear from dev builds and CI.
+MT_COMMERCIAL_BUILD=0
+
+# Never-distributed tier. Mutually exclusive with MT_COMMERCIAL_BUILD=1.
+MT_PRIVATE_BUILD=0

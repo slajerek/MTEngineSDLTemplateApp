@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Tag must match TEMPLATEAPP_VERSION
+        run: |
+          V="$(sed -n 's/^#define[[:space:]]*TEMPLATEAPP_VERSION[[:space:]]*"\([^"]*\)".*/\1/p' src/TemplateAppVersion.h)"
+          [ "v$V" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != v$V (src/TemplateAppVersion.h)"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+  package:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            build: ./build-linux.sh --prod
+            pack: ./tools/make-release/make-release-linux.sh
+          - os: macos-latest
+            build: ./build-macos.sh --prod
+            pack: ./tools/make-release/make-release-macos.sh
+          - os: windows-latest
+            build: .\build-windows.ps1 -Prod   # a [switch]: '--prod' would be swallowed by the stub's passthrough args
+            pack: .\tools\make-release\make-release-windows.ps1
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            nasm \
+            xvfb \
+            git \
+            pkg-config \
+            libglew-dev \
+            libgtk-3-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libxss-dev \
+            libxcb1-dev \
+            libsndio-dev \
+            libfreetype-dev \
+            libdbus-1-dev \
+            libglib2.0-dev \
+            zlib1g-dev \
+            zip
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew list nasm >/dev/null 2>&1 || brew install nasm
+      - name: MSYS2 prerequisites for the codec builds
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msys2 = if ($env:MSYS2_ROOT) { $env:MSYS2_ROOT } else { 'C:\msys64' }
+          $make  = Join-Path $msys2 'usr\bin\make.exe'
+          if (-not (Test-Path (Join-Path $msys2 'usr\bin\bash.exe'))) { throw "MSYS2 not found at $msys2" }
+          if (-not (Test-Path $make)) { & (Join-Path $msys2 'usr\bin\pacman.exe') -Sy --needed --noconfirm make diffutils pkgconf }
+          if (-not (Test-Path $make)) { throw "MSYS2's make is still missing at $make after pacman ran." }
+      # Two steps per OS, not one with an expression in `shell:`: GitHub does
+      # not evaluate expressions there and rejects the whole file.
+      - name: Build package
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ${{ matrix.build }}
+      - name: Build package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ${{ matrix.build }}
+      - id: pack
+        name: Zip
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ${{ matrix.pack }}
+      - id: pack_windows
+        name: Zip (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ${{ matrix.pack }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ runner.os }}
+          path: ${{ steps.pack.outputs.zip_path || steps.pack_windows.outputs.zip_path }}
+          if-no-files-found: error
+
+  publish:
+    needs: [ version, package ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*/*.zip --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

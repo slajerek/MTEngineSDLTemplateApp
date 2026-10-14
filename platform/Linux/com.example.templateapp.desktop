@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=TemplateApp
+Exec=MTEngineSDLTemplateApp
+Icon=com.example.templateapp
+Type=Application
+Categories=Utility;
+StartupNotify=true
+StartupWMClass=com.example.templateapp

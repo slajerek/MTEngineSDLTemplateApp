@@ -1,0 +1,70 @@
+# ANCHORED to the repo root -- an unanchored `build` ignores a directory of
+# that name at ANY depth. See c64d's .gitignore for what that cost there.
+/build/
+*.mode1v3
+*.mode2v3
+*.pbxuser
+*.perspectivev3
+*~.nib
+# .gitattributes sits in this list of editor and IDE droppings because a
+# VENDORED tree's own copy is noise here. THE REPOSITORY'S OWN is not: it is
+# deliberate Git configuration, and it is what pins LF endings for the
+# commit-msg hook so Git for Windows cannot rewrite its shebang. Ignore the
+# pattern, exempt the one that is ours.
+.gitattributes
+!/.gitattributes
+.vs
+.DS_Store
+# Anchored like /build/: macOS checkouts are case-insensitive, so an unanchored
+# `log/`, `Debug/` or `core` would also swallow src/Log/, src/Debug/, src/Core/.
+/log/
+DEADJOE
+UserInterfaceState.xcuserstate
+Browse.VC.db
+*.so
+*.a
+*.ncb
+platform/MacOS/MTEngineSDLTemplateApp.xcodeproj/project.xcworkspace/xcuserdata/
+# Personal Xcode state, wherever it sits: breakpoints, navigator scopes, window
+# layout. The SHARED scheme under xcshareddata/ is tracked deliberately -- it is
+# what lets someone else open this project and build it with -scheme, which the
+# capability pre-action requires -- but everything under xcuserdata/ belongs to
+# one machine and two such files had been tracked here.
+xcuserdata/
+# Workspace state, except IDEWorkspaceChecks.plist: Xcode writes it once and
+# Apple recommends committing it, so it is tracked (a new app inherits it).
+platform/MacOS/MTEngineSDLTemplateApp.xcodeproj/project.xcworkspace/xcshareddata/*
+!platform/MacOS/MTEngineSDLTemplateApp.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+platform/MacOS/MTEngineSDLTemplateApp.xcodeproj/project.xcworkspace/xcshareddata/MTEngineSDL.xccheckout
+platform/MacOS/MTEngineSDLTemplateApp.xcodeproj/.idea/
+platform/MacOS/DerivedData/
+platform/MacOS/build/
+platform/Windows/.vs/
+platform/Windows/bin/
+platform/Windows/prod/
+# The release package the macOS and Linux drivers produce, same shape as the
+# Windows one above. Build output that happens to live in the checkout
+# because that is where a release is assembled; never tracked.
+platform/MacOS/prod/
+platform/Linux/prod/
+platform/Windows/MTEngineSDLTemplateApp/x64/
+platform/Windows/MTEngineSDLTemplateApp/Win32/
+platform/Windows/MTEngineSDLTemplateApp/ARM64/
+*.vcxproj.user
+/platform/Windows/**/Debug/
+# Core dumps land in the working directory, which is the repo root.
+/core
+/core.[0-9]*
+*~
+tests/results/
+.worktrees/
+.superpowers/
+.claude/
+/build-macos/
+
+# Written by the Xcode capability pre-action. It normally lives BESIDE the
+# repos, not inside one -- this entry only matters if someone relocates it.
+.mtengine-ide/
+
+__pycache__/
+/releases/

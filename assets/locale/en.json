@@ -1,0 +1,43 @@
+{
+    "meta": {
+        "locale": "en",
+        "displayName": "English",
+        "fallbacks": [],
+        "numberFormat": { "decimalSeparator": ".", "thousandsSeparator": ",", "groupingSize": 3 },
+        "version": 1
+    },
+    "strings": {
+        "app.title": "TemplateApp",
+        "menu.file": "File",
+        "menu.file.quit": "Quit",
+        "menu.workspace": "Workspace",
+        "menu.workspace.new": "New Workspace...",
+        "menu.workspace.delete": "Delete Workspace",
+        "menu.settings": "Settings",
+        "menu.settings.theme": "Theme",
+        "menu.settings.renderer": "Renderer",
+        "menu.settings.renderer.restart_title": "Renderer",
+        "menu.settings.renderer.restart_message": "The renderer change takes effect after restarting the app.",
+        "menu.settings.gui_scale": "GUI Scale",
+        "menu.settings.language": "Language",
+        "menu.help": "Help",
+        "menu.help.about": "About",
+        "menu.help.imgui_metrics": "ImGui Metrics",
+        "menu.help.imgui_demo": "ImGui Demo",
+        "menu.help.imgui_about": "ImGui About",
+        "about.title": "About",
+        "about.version": "Version %s",
+        "about.engine": "Built with MTEngineSDL.",
+        "workspace.new.title": "New Workspace",
+        "workspace.new.name": "Name",
+        "workspace.new.no_update_positions": "Do not update views positions",
+        "workspace.new.assign_shortcut": "Assign keyboard shortcut",
+        "workspace.new.shortcut": "Key shortcut: %s",
+        "workspace.new.press_key": "Press the new shortcut key",
+        "workspace.new.name_taken": "A workspace with this name already exists.",
+        "workspace.new.cancel": "Cancel",
+        "workspace.new.create": "Create",
+        "workspace.shortcut_taken_title": "Please revise",
+        "workspace.shortcut_taken": "Keyboard shortcut %s is already assigned to %s"
+    }
+}

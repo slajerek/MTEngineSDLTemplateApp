@@ -1,0 +1,9 @@
+// Application icon. SDL3 does not ask for it by name: it takes the first
+// RT_GROUP_ICON in the module, so the window, taskbar and Explorer icons come
+// from here with no code. Keep this the only icon in the file.
+//
+// MTEngineSDLTemplateApp.ico is generated: python3 tools/icons/gen-icons.py
+
+#define IDI_APPICON 101
+
+IDI_APPICON ICON "MTEngineSDLTemplateApp.ico"

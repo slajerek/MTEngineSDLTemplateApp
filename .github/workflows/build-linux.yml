@@ -1,0 +1,108 @@
+name: Linux build
+
+on:
+  push:
+    branches: [ main, ci ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  # MTENGINE_REF holds a BRANCH by default (`origin/master`), and a branch is
+  # tracked rather than pinned -- CI clones it fresh every run, so it always
+  # matches and this flag is inert. The flag stays because it stops being inert
+  # the moment MTENGINE_REF is set to a SHA to freeze an engine for a release:
+  # then a checkout that does not match the pin must fail the run, not warn.
+  MTENGINE_PIN_STRICT: '1'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    # Both logging configurations on every push: the "off" leg compiles the
+    # shipping shape (MT_DEBUG_LOGS=0), which used to be discovered at release.
+    strategy:
+      fail-fast: false
+      matrix:
+        logs: ["on", "off"]
+
+    steps:
+      - name: Checkout MTEngineSDLTemplateApp
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        # No SDL package: SDL3 is built from the vendored source tree by
+        # platform/Linux/build-sdl3.sh, which build-linux.sh runs. The list
+        # below is what SDL3 itself needs to COMPILE against X11/Wayland/ALSA,
+        # plus the toolchain. libsdl2-dev was here until 2026-09-02 and had
+        # been inert since SDL2 was dropped.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            nasm \
+            xvfb \
+            git \
+            pkg-config \
+            libglew-dev \
+            libgtk-3-dev \
+            libgl1-mesa-dev \
+            libglu1-mesa-dev \
+            libasound2-dev \
+            libpulse-dev \
+            libx11-dev \
+            libxext-dev \
+            libxrandr-dev \
+            libxcursor-dev \
+            libxi-dev \
+            libxinerama-dev \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libxss-dev \
+            libxcb1-dev \
+            libsndio-dev \
+            libfreetype-dev \
+            libdbus-1-dev \
+            libglib2.0-dev \
+            zlib1g-dev
+
+      - name: Build
+        run: |
+          chmod +x ./build-linux.sh
+          ./build-linux.sh --logs ${{ matrix.logs }}
+
+      - name: mtcaps golden tests
+        run: |
+          # tools/mtcaps is the single point of failure for the whole capability
+          # system, so its own tests run before anything that depends on it.
+          python3 ../MTEngineSDL/tools/mtcaps/tests/test_mtcaps.py
+
+      - name: Run tests (both suites)
+        run: |
+          # Chunk 0.6. Every workflow in these repos built and ran nothing, so
+          # "no app's suite regresses" was an unchecked claim on every platform.
+          # --binary is what makes this runnable off macOS: the platform's own
+          # build script produced the binary, and the runner only runs and parses.
+          chmod +x ./tests/run_test.sh
+          # xvfb-run: --headless in this engine means "do not SHOW the window",
+          # not "do not need a display". SDL_Init(SDL_INIT_VIDEO) and a real
+          # (hidden) OpenGL window/context are created unconditionally in
+          # normal mode -- gServiceMode is the flag that skips all of that, and
+          # --headless does not set it. Every earlier "real" verification of
+          # this suite ran on a machine with an actual desktop session (a
+          # developer's Mac, a Linux box with a display), so this was never
+          # exercised: a GitHub Actions runner has no display server at all,
+          # SDL_CreateWindow returns NULL, and the app aborts near-silently --
+          # its own LOGError writes to a file, not stdout, so the CI log shows
+          # nothing but "Aborted (core dumped)". Measured 2026-09-03, run
+          # 33758832830. xvfb-run starts a virtual X server for the duration of
+          # the command and tears it down after, which is enough for
+          # Mesa's software GL (llvmpipe) to give SDL a real, if invisible,
+          # window and GL context.
+          xvfb-run -a ./tests/run_test.sh --binary build/MTEngineSDLTemplateApp
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: MTEngineSDLTemplateApp-linux-logs-${{ matrix.logs }}
+          path: build/MTEngineSDLTemplateApp
+          if-no-files-found: error
