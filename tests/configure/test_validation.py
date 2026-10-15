@@ -42,6 +42,12 @@ class ValidationTest(unittest.TestCase):
                 self.opts("MyTool", *argv)
             self.assertIn(flag, str(e.exception))
 
+    def test_title_is_one_line(self):
+        # The title becomes the .desktop Name=, where a newline starts a new key.
+        with self.assertRaises(cfg.ConfigError) as e:
+            self.opts("MyTool", "--title", "My\nTool")
+        self.assertIn("one line", str(e.exception))
+
     def test_name_clashing_with_engine_header(self):
         # Name "Gui" generates CGuiMenu.h; give the fake engine a header of that name.
         (self.engine / "src/Engine/GUI/CGuiMenu.h").write_text("// engine\n")

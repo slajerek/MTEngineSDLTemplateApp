@@ -60,6 +60,8 @@ def make_workspace():
             "<ProjectReference><Project>{E93D3B41-0000-0000-0000-000000000000}</Project></ProjectReference>\n",
         "platform/Linux/com.example.templateapp.desktop": "Name=TemplateApp\nIcon=com.example.templateapp\nStartupWMClass=com.example.templateapp\n",
         "platform/Linux/icons/hicolor/16x16/apps/com.example.templateapp.png": "PNG",
+        "platform/MacOS/Info.plist": "<dict>\n\t<key>CFBundleDisplayName</key>\n\t<string>TemplateApp</string>\n"
+                                     "\t<key>CFBundleName</key>\n\t<string>TemplateApp</string>\n</dict>\n",
         "platform/MacOS/MTEngineSDLTemplateApp.icns": "ICNS",
         "platform/Windows/MTEngineSDLTemplateApp/MTEngineSDLTemplateApp.ico": "ICO",
         "tools/icons/master.png": "PNG",

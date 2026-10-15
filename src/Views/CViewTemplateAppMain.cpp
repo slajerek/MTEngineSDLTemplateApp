@@ -123,7 +123,7 @@ void CViewTemplateAppMain::RenderNewWorkspacePopup()
 			layout->doNotUpdateViewsPositions = doNotUpdateViewsPosition;
 			if (layout->keyShortcut)
 			{
-				// SetName takes char * and copies it (DummyApp CMainMenuBar.cpp:492-495).
+				// SetName takes char * and copies it.
 				char *shortcutName = SYS_GetCharBuf();
 				snprintf(shortcutName, MAX_STRING_LENGTH, "Workspace %s", layoutName);   // identity, not UI text: never translated
 				layout->keyShortcut->SetName(shortcutName);

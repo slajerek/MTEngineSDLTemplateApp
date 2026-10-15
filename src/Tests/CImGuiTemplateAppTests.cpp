@@ -32,7 +32,7 @@ static bool ImGuiMenuBar()
 }
 
 // Menu-bar entries are not direct children of the menu-bar window: ImGui
-// submits them inside its "##MenuBar" child (DummyApp CImGuiDummyTests.cpp:50-66).
+// submits them inside its "##MenuBar" child.
 // ItemInfo(<label>) relative to "##MainMenuBar" therefore finds nothing; this
 // path does. MenuClick() builds the same path internally, so it may still be
 // called relative to SetRef("##MainMenuBar").

@@ -25,7 +25,13 @@ class ApplyTest(unittest.TestCase):
         pbx = (self.stage / "platform/MacOS/MyTool.xcodeproj/project.pbxproj").read_text()
         self.assertEqual(pbx.count("PRODUCT_BUNDLE_IDENTIFIER = com.acme.mytool;"), 2)
         self.assertTrue((self.stage / "platform/Linux/com.acme.mytool.desktop").exists())
-        self.assertIn("Icon=com.acme.mytool", (self.stage / "platform/Linux/com.acme.mytool.desktop").read_text())
+        desktop = (self.stage / "platform/Linux/com.acme.mytool.desktop").read_text()
+        self.assertIn("Icon=com.acme.mytool", desktop)
+        # The title is what the user sees in the launcher, the Dock and the app menu.
+        self.assertIn("Name=My Tool\n", desktop)
+        plist = (self.stage / "platform/MacOS/Info.plist").read_text()
+        self.assertIn("<key>CFBundleName</key>\n\t<string>My Tool</string>", plist)
+        self.assertIn("<key>CFBundleDisplayName</key>\n\t<string>My Tool</string>", plist)
         self.assertTrue((self.stage / "platform/Linux/icons/hicolor/16x16/apps/com.acme.mytool.png").exists())
         self.assertEqual((self.stage / "mtengine.caps").read_bytes(), b"MT_CAP_MIDI=1\n")
         self.assertFalse((self.stage / ".github/workflows").exists())
@@ -33,6 +39,13 @@ class ApplyTest(unittest.TestCase):
         self.assertIn("com.acme.mytool.desktop", (self.stage / "CMakeLists.txt").read_text())
         self.assertIn('APP_ID = "com.acme.mytool"', (self.stage / "tools/icons/gen-icons.py").read_text())
         self.assertFalse(any("com.example.mytool" in p.name for p in self.stage.rglob("*")))
+
+    def test_title_is_escaped_for_the_plist(self):
+        o = cfg.Options(**{**self.o.__dict__, "title": "R&D <Tool>"})
+        cfg.apply_values(o, self.stage, "MT_CAP_MIDI=1\n")
+        plist = (self.stage / "platform/MacOS/Info.plist").read_text()
+        self.assertEqual(plist.count("<string>R&amp;D &lt;Tool&gt;</string>"), 2)
+        self.assertIn("Name=R&D <Tool>\n", (self.stage / "platform/Linux/com.acme.mytool.desktop").read_text())
 
     def test_line_endings_untouched(self):
         cfg.apply_values(self.o, self.stage, "MT_CAP_MIDI=1\r\n")

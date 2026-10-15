@@ -45,5 +45,14 @@ class ManifestTest(unittest.TestCase):
             cfg.locate_engine(o)
         self.assertIn("git clone https://github.com/slajerek/MTEngineSDL.git", str(e.exception))
 
+    def test_engine_on_wrong_branch_prints_checkout_command(self):
+        (self.engine / "tools/mtcaps/vocabulary.json").unlink()
+        o = cfg.Options(name="MyTool", out=self.parent / "MyTool", title="t", settings_folder="f",
+                        bundle_id="com.example.mytool", menu="imgui", template=self.tpl, engine=self.engine)
+        with self.assertRaises(cfg.ConfigError) as e:
+            cfg.locate_engine(o)
+        self.assertIn("wrong branch", str(e.exception))
+        self.assertIn("checkout", str(e.exception))
+
 if __name__ == "__main__":
     unittest.main()

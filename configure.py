@@ -134,6 +134,8 @@ def validate(o):
                           "the build scripts and the .sln find the engine at ../MTEngineSDL")
     if not o.title.strip():
         raise ConfigError("title must not be empty")
+    if any(ord(c) < 32 for c in o.title):
+        raise ConfigError("title must be one line, without control characters")
     if not FOLDER_RE.match(o.settings_folder):
         raise ConfigError(f"settings folder {o.settings_folder!r} may only use letters, digits, '.', '_', '-'")
     if not BUNDLE_RE.match(o.bundle_id):
@@ -165,6 +167,11 @@ def _engine_ref(template):
 def locate_engine(o):
     vocab_path = o.engine / "tools/mtcaps/vocabulary.json"
     ref = _engine_ref(o.template)
+    if o.engine.is_dir() and not vocab_path.is_file():
+        raise ConfigError(
+            f"{o.engine} exists but has no tools/mtcaps: it is probably on the wrong branch.\n"
+            f"This template is built against MTENGINE_REF {ref}:\n"
+            f"    git -C {o.engine} fetch && git -C {o.engine} checkout {ref.removeprefix('origin/')}")
     if not vocab_path.is_file():
         raise ConfigError(
             f"MTEngineSDL not found at {o.engine}. Clone it first:\n"
@@ -400,6 +407,17 @@ def apply_values(o, staging, manifest_text):
     _sub_once(init, r'(kAppId\s*=\s*)"[^"]*"', lambda m: f'{m.group(1)}"{o.bundle_id}"', "kAppId")
     mode = "Native" if o.menu == "hybrid" else "ImGui"
     _sub_once(init, r"(kMenuBarMode\s*=\s*EMTMenuBarMode::)\w+", lambda m: m.group(1) + mode, "kMenuBarMode")
+
+    # The title is also the name the user sees outside the window: the macOS
+    # app menu and Dock (CFBundleName, CFBundleDisplayName) and the Linux
+    # launcher (the .desktop Name=). The class name stays the executable's.
+    xml = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    plist = staging / "platform/MacOS/Info.plist"
+    for key in ("CFBundleName", "CFBundleDisplayName"):
+        _sub_once(plist, rf"(<key>{key}</key>\s*<string>)[^<]*(</string>)",
+                  lambda m: m.group(1) + xml(o.title) + m.group(2), key)
+    _sub_once(staging / f"platform/Linux/{o.bundle_id}.desktop", r"(?m)^Name=.*$",
+              lambda m: "Name=" + o.title, ".desktop Name=")
 
     pbx = staging / f"platform/MacOS/{name}.xcodeproj/project.pbxproj"
     _sub_once(pbx, r"PRODUCT_BUNDLE_IDENTIFIER = [^;]+;", f"PRODUCT_BUNDLE_IDENTIFIER = {o.bundle_id};", "PRODUCT_BUNDLE_IDENTIFIER")

@@ -4,10 +4,18 @@
 The empty starting point for an [MTEngineSDL](https://github.com/slajerek/MTEngineSDL) app.
 
     git clone https://github.com/slajerek/MTEngineSDLTemplateApp
-    git clone https://github.com/slajerek/MTEngineSDL        # sibling directory
+    git clone -b devel https://github.com/slajerek/MTEngineSDL   # sibling directory
     cd MTEngineSDLTemplateApp
-    ./configure.py MyTool                                     # creates ../MyTool
+    ./configure.py MyTool                                        # creates ../MyTool
     cd ../MyTool && ./build-macos.sh
+
+**Check out the engine branch named in `MTENGINE_REF`.** The template is built
+against the branch that file names (`origin/devel` means the engine's `devel`),
+and it may need engine API that the other branch does not have yet. A plain
+`git clone` checks out the engine's default branch, which can be the wrong one.
+The build scripts clone the engine at `MTENGINE_REF` only when `../MTEngineSDL`
+is missing; they never move an existing checkout. `configure.py` warns when the
+checkout is not at `MTENGINE_REF`.
 
 `./configure.py --help` lists the options: window title, settings folder,
 bundle id, menu mode (`imgui` or `hybrid`), capabilities, locales, icon, CI and
@@ -20,6 +28,19 @@ An MTEngineSDL application, started from the MTEngineSDL template app: one main
 view, workspaces, Settings (theme / renderer / GUI scale), Help, i18n, a smoke
 test and CI for macOS, Linux and Windows.
 
+## Prerequisites
+
+- **All:** git, Python 3.9+ (Pillow only to regenerate the icon).
+- **macOS:** Xcode and its command-line tools, `nasm` (`brew install nasm`).
+- **Linux:** a compiler, CMake, `nasm` and the SDL/GTK development packages;
+  `.github/workflows/build-linux.yml` has the full `apt-get` list.
+- **Windows:** Visual Studio 2022 or newer with C++, and MSYS2 with `make diffutils
+  pkgconf` (the codec builds use it). Run Python as `py`, and allow local
+  scripts once: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+The first build compiles the engine and its libraries and takes a while; later
+builds are incremental.
+
 ## Build
 
     ./build-macos.sh        # macOS
@@ -28,6 +49,12 @@ test and CI for macOS, Linux and Windows.
 
 MTEngineSDL must be checked out next to this repository (`../MTEngineSDL`); the
 build scripts clone it if it is missing.
+
+`MTENGINE_REF` names the engine branch this branch builds against, and the two
+are paired: `origin/devel` on a `devel` branch, `origin/master` on `master`.
+The build scripts clone that branch when the engine is missing but never switch
+an existing checkout, so keep `../MTEngineSDL` on the matching branch yourself.
+CI runs on `master`, `main` and `devel` and clones the engine at `MTENGINE_REF`.
 
 ## Run the tests
 

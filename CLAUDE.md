@@ -21,14 +21,14 @@ cd ../MyTool && ./build-macos.sh
 It is deliberately NOT a showcase. Feature examples belong in
 MTEngineSDLDummyApp (to be renamed DemoApp). The template has one empty view,
 workspaces, Settings (theme / renderer / GUI scale), Help (About, ImGui Metrics,
-Demo, About), i18n, a smoke test and CI for build + release on macOS, Linux and
+ImGui Demo, ImGui About), i18n, a smoke test and CI for build + release on macOS, Linux and
 Windows. **Anything added here is added to every future app. Keep it empty.**
 
 <!-- template-only:end -->
 
 TemplateApp is an MTEngineSDL application, generated from the MTEngineSDL
 template app. It starts with one main view, workspaces, Settings (theme /
-renderer / GUI scale), Help (About, ImGui Metrics, Demo, About), i18n, a smoke
+renderer / GUI scale), Help (About, ImGui Metrics, ImGui Demo, ImGui About), i18n, a smoke
 test and CI for build + release on macOS, Linux and Windows.
 
 **External Dependency**: Requires MTEngineSDL engine in sibling directory (`../MTEngineSDL`).

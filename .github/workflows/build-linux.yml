@@ -1,10 +1,14 @@
 name: Linux build
 
+# `devel` is where work lands and `master` / `main` only receive what devel has
+# proved, so CI runs on all three. Each branch's MTENGINE_REF names the engine
+# branch it pairs with: `origin/devel` on devel, `origin/master` on master.
+# `ci` is a scratch branch for running the workflows before a release.
 on:
   push:
-    branches: [ main, ci ]
+    branches: [ master, main, devel, ci ]
   pull_request:
-    branches: [ main ]
+    branches: [ master, main, devel ]
   workflow_dispatch:
 
 env:
