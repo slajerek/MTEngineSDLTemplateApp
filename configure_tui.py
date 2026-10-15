@@ -536,9 +536,9 @@ class Wizard:
         focus_row = rows.index(self.focus)
         self.form_top = scroll_top(focus_row, getattr(self, "form_top", 0), view, len(rows))
         if self.form_top > 0:
-            put(scr, y + 1, x + wid - 2, "\u25b2", a["winbold"])
+            glyph(scr, y + 1, x + wid - 2, "up", a["winbold"])
         if self.form_top + view < len(rows):
-            put(scr, y + 1 + view, x + wid - 2, "\u25bc", a["winbold"])
+            glyph(scr, y + 1 + view, x + wid - 2, "down", a["winbold"])
         cursor = None
         for r, i in enumerate(rows[self.form_top:self.form_top + view]):
             if i is None:
@@ -568,7 +568,7 @@ class Wizard:
                 put(scr, row, err_x, ("! " + errors[f.key])[:x + wid - err_x], a["winerr"])
         help_lines = textwrap.wrap(FIELDS[self.focus].help, wid)[:2]
         for i, line in enumerate(help_lines):
-            put(scr, y + hgt - 2 + i - (len(help_lines) - 1), x, line, a["windim"])
+            put(scr, y + hgt - 2 + i - (len(help_lines) - 1), x, line, a["win"])
         return cursor
 
     def _draw_caps(self, scr, a, y, x, hgt, wid):
@@ -592,19 +592,19 @@ class Wizard:
             attr = a["hl"] if i == self.cap_cursor else a["windim"] if st in ("base", "implied") else a["win"]
             put(scr, y + 2 + r, x, line[:list_w - 1].ljust(list_w - 1), attr)
         if self.cap_top > 0:
-            put(scr, y + 1, x + list_w - 4, "\u25b2", a["winbold"])
+            glyph(scr, y + 1, x + list_w - 4, "up", a["winbold"])
         if self.cap_top + list_h < len(keys):
-            put(scr, y + 1 + list_h, x + list_w - 4, "\u25bc", a["hl"] if self.cap_cursor == self.cap_top + list_h - 1
+            glyph(scr, y + 1 + list_h, x + list_w - 4, "down", a["hl"] if self.cap_cursor == self.cap_top + list_h - 1
                 else a["winbold"])
         # The description panel: right of the list, or under it.
         key = keys[self.cap_cursor]
         if wide:
             px, py, pw, ph = x + list_w + 1, y + 2, wid - list_w - 1, hgt - 2
             for r in range(ph):
-                put(scr, py + r, px - 1, "\u2502", a["windim"])
+                vline(scr, py + r, px - 1, a["windim"])
         else:
             px, py, pw, ph = x, y + 3 + list_h, wid, hgt - 3 - list_h
-            put(scr, py - 1, x, "\u2500" * wid, a["windim"])
+            hline(scr, py - 1, x, wid, a["windim"])
         lines = [(self.caps.short(key), a["winbold"])]
         for para in self.caps.details(key):
             lines += [(l, a["win"]) for l in textwrap.wrap(para, max(10, pw - 2))]
@@ -649,39 +649,73 @@ def fill(scr, y, x, hgt, wid, attr):
         put(scr, y + r, x, " " * wid, attr)
 
 
+# Lines use the terminal's own line-drawing set (curses ACS), not Unicode box
+# characters: those are "ambiguous width" and some terminals and fonts draw
+# them double-wide or not at all. A fake screen without addch gets Unicode.
+ACS = {"h": ("ACS_HLINE", "\u2500"), "v": ("ACS_VLINE", "\u2502"), "ul": ("ACS_ULCORNER", "\u250c"),
+       "ur": ("ACS_URCORNER", "\u2510"), "ll": ("ACS_LLCORNER", "\u2514"), "lr": ("ACS_LRCORNER", "\u2518"),
+       "up": ("ACS_UARROW", "\u25b2"), "down": ("ACS_DARROW", "\u25bc")}
+
+
+def glyph(scr, y, x, name, attr=0):
+    h, w = scr.getmaxyx()
+    if not (0 <= y < h and 0 <= x < w) or (y == h - 1 and x == w - 1):
+        return
+    acs_name, text = ACS[name]
+    if hasattr(scr, "addch") and hasattr(curses, acs_name):
+        try:
+            scr.addch(y, x, getattr(curses, acs_name), attr)
+        except curses.error:
+            pass
+    else:
+        put(scr, y, x, text, attr)
+
+
+def hline(scr, y, x, n, attr):
+    for i in range(n):
+        glyph(scr, y, x + i, "h", attr)
+
+
+def vline(scr, y, x, attr):
+    glyph(scr, y, x, "v", attr)
+
+
 def box(scr, y, x, hgt, wid, attr):
-    put(scr, y, x, "\u250c" + "\u2500" * (wid - 2) + "\u2510", attr)
+    glyph(scr, y, x, "ul", attr)
+    hline(scr, y, x + 1, wid - 2, attr)
+    glyph(scr, y, x + wid - 1, "ur", attr)
     for r in range(1, hgt - 1):
-        put(scr, y + r, x, "\u2502", attr)
-        put(scr, y + r, x + wid - 1, "\u2502", attr)
-    put(scr, y + hgt - 1, x, "\u2514" + "\u2500" * (wid - 2) + "\u2518", attr)
+        vline(scr, y + r, x, attr)
+        vline(scr, y + r, x + wid - 1, attr)
+    glyph(scr, y + hgt - 1, x, "ll", attr)
+    hline(scr, y + hgt - 1, x + 1, wid - 2, attr)
+    glyph(scr, y + hgt - 1, x + wid - 1, "lr", attr)
 
 
 def make_attrs():
-    """menuconfig's palette: blue screen, grey window, blue highlight."""
+    """menuconfig's layout: blue screen, white window, blue highlight."""
     names = ("bg", "bgtitle", "win", "winbold", "wintitle", "windim", "winerr", "hl", "field", "field_edit", "status", "err")
     if not curses.has_colors():
         r = curses.A_REVERSE
         return dict(zip(names, (0, curses.A_BOLD, 0, curses.A_BOLD, curses.A_BOLD, curses.A_DIM, curses.A_BOLD,
                                 r, curses.A_UNDERLINE, r | curses.A_BOLD, r, curses.A_BOLD)))
     curses.start_color()
-    try:
-        curses.use_default_colors()
-    except curses.error:
-        pass
-    pairs = {"bg": (curses.COLOR_WHITE, curses.COLOR_BLUE), "bgtitle": (curses.COLOR_CYAN, curses.COLOR_BLUE),
-             "win": (curses.COLOR_BLACK, curses.COLOR_WHITE), "winerr": (curses.COLOR_RED, curses.COLOR_WHITE),
-             "windim": (curses.COLOR_BLUE, curses.COLOR_WHITE), "hl": (curses.COLOR_WHITE, curses.COLOR_BLUE),
-             "field": (curses.COLOR_WHITE, curses.COLOR_BLACK), "field_edit": (curses.COLOR_BLACK, curses.COLOR_YELLOW),
-             "status": (curses.COLOR_BLACK, curses.COLOR_CYAN), "err": (curses.COLOR_WHITE, curses.COLOR_RED)}
+    # Contrast first: dark text on the brightest background the terminal has,
+    # light text only on blue or black. Bright colours (8-15) where available.
+    bright = curses.COLORS >= 16
+    WHITE = curses.COLOR_WHITE + 8 if bright else curses.COLOR_WHITE
+    YELLOW = curses.COLOR_YELLOW + 8 if bright else curses.COLOR_YELLOW
+    B, K, BL, R, C = curses.COLOR_BLUE, curses.COLOR_BLACK, curses.COLOR_BLUE, curses.COLOR_RED, curses.COLOR_CYAN
+    pairs = {"bg": (WHITE, B), "win": (K, WHITE), "winerr": (R, WHITE), "windim": (BL, WHITE),
+             "hl": (WHITE, B), "field": (WHITE, K), "field_edit": (YELLOW, K), "status": (K, C), "err": (WHITE, R)}
     ids = {}
     for i, (k, (fg, bgc)) in enumerate(pairs.items(), start=1):
         curses.init_pair(i, fg, bgc)
         ids[k] = curses.color_pair(i)
-    return {"bg": ids["bg"], "bgtitle": ids["bgtitle"] | curses.A_BOLD, "win": ids["win"],
+    return {"bg": ids["bg"], "bgtitle": ids["bg"] | curses.A_BOLD, "win": ids["win"],
             "winbold": ids["win"] | curses.A_BOLD, "wintitle": ids["win"] | curses.A_BOLD, "windim": ids["windim"],
             "winerr": ids["winerr"] | curses.A_BOLD, "hl": ids["hl"] | curses.A_BOLD, "field": ids["field"],
-            "field_edit": ids["field_edit"], "status": ids["status"], "err": ids["err"] | curses.A_BOLD}
+            "field_edit": ids["field_edit"] | curses.A_BOLD, "status": ids["status"], "err": ids["err"] | curses.A_BOLD}
 
 # --------------------------------------------------------------------------
 # Entry point
