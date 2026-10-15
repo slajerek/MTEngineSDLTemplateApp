@@ -109,9 +109,3 @@ GitHub Release.
 ## License
 
 MIT, see `LICENSE`. Copyright (c) 2026 Marcin Skoczylas.
-
-<!-- template-only:begin -->
-### Manual checks before a template release
-- Windows, `kMenuBarMode = Native`: the Win32 menu shows Workspace / Settings / Help / File with working items, and no empty menu strip appears in `ImGui` mode.
-- Linux: the ImGui menu bar works with mouse and keyboard.
-<!-- template-only:end -->
