@@ -34,6 +34,8 @@ class ApplyTest(unittest.TestCase):
         self.assertIn("<key>CFBundleDisplayName</key>\n\t<string>My Tool</string>", plist)
         self.assertTrue((self.stage / "platform/Linux/icons/hicolor/16x16/apps/com.acme.mytool.png").exists())
         self.assertEqual((self.stage / "mtengine.caps").read_bytes(), b"MT_CAP_MIDI=1\n")
+        # The app's CI clones the engine at MTENGINE_REF: the value chosen, not the template's own.
+        self.assertEqual((self.stage / "MTENGINE_REF").read_text(), "origin/devel\n")
         self.assertFalse((self.stage / ".github/workflows").exists())
         # A custom bundle id reaches every file that names the default one.
         self.assertIn("com.acme.mytool.desktop", (self.stage / "CMakeLists.txt").read_text())

@@ -18,8 +18,9 @@ is missing; they never move an existing checkout. `configure.py` warns when the
 checkout is not at `MTENGINE_REF`.
 
 `./configure.py --help` lists the options: window title, settings folder,
-bundle id, menu mode (`imgui` or `hybrid`), capabilities, locales, icon, CI and
-git. The template itself is never modified; it also builds as-is.
+bundle id, menu mode (`imgui` or `hybrid`), the engine branch the app's CI
+builds against (`MTENGINE_REF`, default `origin/devel`), capabilities, locales,
+icon, CI and git. The template itself is never modified; it also builds as-is.
 
 <!-- template-only:end -->
 # TemplateApp

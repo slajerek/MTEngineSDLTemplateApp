@@ -27,6 +27,13 @@ class ConfigError(Exception):
     pass
 
 
+# The engine revision a new app's MTENGINE_REF names, which is what its CI
+# clones from GitHub. `devel` is the public engine's live branch; its `master`
+# lags until the next stable merge. Asked for, because this changes over time.
+DEFAULT_ENGINE_REF = "origin/devel"
+ENGINE_REF_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]*$")
+
+
 @dataclass
 class Options:
     name: str
@@ -42,6 +49,8 @@ class Options:
     git: bool = True
     template: Path = HERE
     engine: Path = None
+    engine_ref: str = DEFAULT_ENGINE_REF
+
 
 
 def token_map(name):
@@ -57,6 +66,8 @@ def parse_args(argv):
     ap.add_argument("--settings-folder", help="settings folder name (default <Name>)")
     ap.add_argument("--bundle-id", help="reverse-DNS id (default com.example.<name>)")
     ap.add_argument("--menu", choices=["imgui", "hybrid"], help="imgui everywhere, or native on macOS/Windows")
+    ap.add_argument("--engine-ref", help=f"engine branch, tag or SHA for MTENGINE_REF, which CI clones "
+                                         f"(default {DEFAULT_ENGINE_REF})")
     ap.add_argument("--caps", help="capabilities to enable, comma-separated, without MT_CAP_ (e.g. MIDI,HTTPS)")
     ap.add_argument("--locales", help="comma-separated locale tags; en is always included")
     ap.add_argument("--icon", type=Path, help="square PNG >= 1024 px to use as the app icon (needs Pillow)")
@@ -95,6 +106,7 @@ def resolve_options(ns, interactive, ask=input):
     folder = get(ns.settings_folder, "Settings folder", name, "--settings-folder")
     bundle = get(ns.bundle_id, "Bundle id", f"com.example.{name.lower()}", "--bundle-id")
     menu = get(ns.menu, "Menu (imgui/hybrid)", "imgui", "--menu")
+    engine_ref = get(ns.engine_ref, "Engine branch for CI (MTENGINE_REF)", DEFAULT_ENGINE_REF, "--engine-ref")
     caps = _split(get(ns.caps, "Extra capabilities (comma-separated, e.g. MIDI,HTTPS)", "", "--caps"))
     locales = _split(get(ns.locales, "Locales (comma-separated)", "en", "--locales"))
     icon = get(str(ns.icon) if ns.icon else None, "Icon PNG (empty = placeholder)", "", "--icon")
@@ -113,7 +125,7 @@ def resolve_options(ns, interactive, ask=input):
     return Options(name=name, out=out.resolve(), title=title, settings_folder=folder, bundle_id=bundle,
                    menu=menu, caps=[c.upper().removeprefix("MT_CAP_") for c in caps], locales=locales,
                    icon=Path(icon).expanduser().resolve() if icon else None, ci=ci, git=use_git,
-                   template=template, engine=template.parent / "MTEngineSDL")
+                   template=template, engine=template.parent / "MTEngineSDL", engine_ref=engine_ref)
 
 
 def validate(o):
@@ -132,6 +144,8 @@ def validate(o):
     if o.out.parent != o.template.parent:
         raise ConfigError(f"{o.out} must be next to the template and MTEngineSDL (in {o.template.parent}): "
                           "the build scripts and the .sln find the engine at ../MTEngineSDL")
+    if not ENGINE_REF_RE.match(o.engine_ref):
+        raise ConfigError(f"--engine-ref {o.engine_ref!r} must be a branch (origin/devel), tag or SHA")
     if not o.title.strip():
         raise ConfigError("title must not be empty")
     if any(ord(c) < 32 for c in o.title):
@@ -156,17 +170,10 @@ def validate(o):
             raise ConfigError(f"name {o.name!r} generates {h}, which clashes with an engine header of the same name")
 
 
-def _engine_ref(template):
-    for line in (template / "MTENGINE_REF").read_text().splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            return line
-    return "origin/master"
-
 
 def locate_engine(o):
     vocab_path = o.engine / "tools/mtcaps/vocabulary.json"
-    ref = _engine_ref(o.template)
+    ref = o.engine_ref
     if o.engine.is_dir() and not vocab_path.is_file():
         raise ConfigError(
             f"{o.engine} exists but has no tools/mtcaps: it is probably on the wrong branch.\n"
@@ -423,6 +430,8 @@ def apply_values(o, staging, manifest_text):
     _sub_once(pbx, r"PRODUCT_BUNDLE_IDENTIFIER = [^;]+;", f"PRODUCT_BUNDLE_IDENTIFIER = {o.bundle_id};", "PRODUCT_BUNDLE_IDENTIFIER")
 
     _write(staging / "mtengine.caps", manifest_text)
+    # Only the value line: the comment above it explains branch vs pin.
+    _sub_once(staging / "MTENGINE_REF", r"(?m)^(?![ \t]*#)[ \t]*\S+[ \t]*$", lambda m: o.engine_ref, "the MTENGINE_REF line")
 
     en_path = staging / "assets/locale/en.json"
     # The About window shows app.title: it is the --title, not the class name.
@@ -477,7 +486,7 @@ def write_template_config(o, staging, engine_sha):
     doc = {"configurator_version": VERSION, "template_sha": sha, "engine_sha": engine_sha,
            "options": {"name": o.name, "title": o.title, "settings_folder": o.settings_folder,
                        "bundle_id": o.bundle_id, "menu": o.menu, "caps": o.caps, "locales": o.locales,
-                       "icon": bool(o.icon), "ci": o.ci, "git": o.git}}
+                       "icon": bool(o.icon), "ci": o.ci, "git": o.git, "engine_ref": o.engine_ref}}
     _write(staging / "template-config.json", json.dumps(doc, indent=2) + "\n")
 
 

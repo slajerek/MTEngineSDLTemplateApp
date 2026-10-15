@@ -26,6 +26,7 @@ class ValidationTest(unittest.TestCase):
         self.assertEqual(o.menu, "imgui")
         self.assertEqual(o.locales, ["en"])
         self.assertTrue(o.ci and o.git)
+        self.assertEqual(o.engine_ref, "origin/devel")
 
     def test_bad_names(self):
         for bad in ("myTool", "My-Tool", "1Tool", "TemplateAppX", "MyTEMPLATEAPP", "Templateapp"):
@@ -79,9 +80,16 @@ class ValidationTest(unittest.TestCase):
         self.assertIn("name", str(e.exception))
 
     def test_interactive_prompts_use_answers_and_defaults(self):
-        answers = iter(["MyTool", "", "My Tool", "", "", "hybrid", "MIDI", "pl", "", "y", "y"])
+        answers = iter(["MyTool", "", "My Tool", "", "", "hybrid", "origin/master", "MIDI", "pl", "", "y", "y"])
         o = cfg.resolve_options(ns(["--template", str(self.tpl)]), interactive=True, ask=lambda _p: next(answers))
         self.assertEqual((o.name, o.title, o.menu, o.caps, o.locales), ("MyTool", "My Tool", "hybrid", ["MIDI"], ["en", "pl"]))
+        self.assertEqual(o.engine_ref, "origin/master")
+
+    def test_engine_ref(self):
+        self.assertEqual(self.opts("MyTool", "--engine-ref", "v3.21.22").engine_ref, "v3.21.22")
+        for bad in ("origin/de vel", "a;b", "/x"):
+            with self.assertRaises(cfg.ConfigError, msg=bad):
+                self.opts("MyTool", "--engine-ref", bad)
 
     def test_template_must_be_git_clone(self):
         import shutil
