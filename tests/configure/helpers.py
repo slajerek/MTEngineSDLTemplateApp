@@ -75,6 +75,7 @@ def make_workspace():
         "CLAUDE.md": "# CLAUDE.md\n\n<!-- template-only:begin -->\nTemplate invariants.\n<!-- template-only:end -->\n\nTemplateApp guide.\n",
         "README.md": "<!-- template-only:begin -->\n# MTEngineSDLTemplateApp\n<!-- template-only:end -->\n# TemplateApp\n",
         "configure.py": "# configurator\n",
+        "configure_tui.py": "# wizard\n",
         "tests/configure/test_x.py": "# test\n",
         "specs/superpowers/specs/x.md": "internal\n",
         "LICENSE": "MIT\n",

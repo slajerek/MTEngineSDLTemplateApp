@@ -18,6 +18,13 @@ and it ships `configure.py`, the wizard that turns it into one:
 cd ../MyTool && ./build-macos.sh
 ```
 
+In a terminal `configure.py` runs a full-screen wizard (`configure_tui.py`,
+curses): a form, a scrolling capability checklist with a description panel,
+and a summary. It is a front end only: the values go through the same
+`Options` and `validate()` as the flags. `--yes`, `--plain`, a non-terminal
+stdin and a Python without curses (Windows without `windows-curses`) use the
+line-by-line path.
+
 It is deliberately NOT a showcase. Feature examples belong in
 MTEngineSDLDummyApp (to be renamed DemoApp). The template has one empty view,
 workspaces, Settings (theme / renderer / GUI scale), Help (About, ImGui Metrics,
@@ -78,7 +85,7 @@ These are what make `configure.py` safe. Breaking one breaks every generated app
 4. **The configurator only reads the template.** It copies `git ls-files` into a
    new sibling directory and works there.
 5. **Template-only files never reach a generated app:** `configure.py`,
-   `tests/configure/`, `.github/workflows/configure.yml`, `specs/`. When adding
+   `configure_tui.py`, `tests/configure/`, `.github/workflows/configure.yml`, `specs/`. When adding
    a template-only file, add it to the configurator's exclusion list in the same
    commit.
 6. **No code depends on an optional capability.** The template ships with only

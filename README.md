@@ -6,8 +6,14 @@ The empty starting point for an [MTEngineSDL](https://github.com/slajerek/MTEngi
     git clone https://github.com/slajerek/MTEngineSDLTemplateApp
     git clone -b devel https://github.com/slajerek/MTEngineSDL   # sibling directory
     cd MTEngineSDLTemplateApp
-    ./configure.py MyTool                                        # creates ../MyTool
+    ./configure.py                                               # wizard; creates ../<Name>
     cd ../MyTool && ./build-macos.sh
+
+`configure.py` opens a full-screen wizard: the app's name and settings, then
+the engine capabilities as a checklist with a description of each, then a
+summary. `--yes` with flags skips it, `--plain` asks line by line. On Windows
+the wizard needs `py -m pip install windows-curses`; without it the line-by-line
+questions are used.
 
 **Check out the engine branch named in `MTENGINE_REF`.** The template is built
 against the branch that file names (`origin/devel` means the engine's `devel`),

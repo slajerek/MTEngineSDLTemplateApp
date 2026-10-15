@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Create a new MTEngineSDL app from this template.
 
-    ./configure.py MyTool                       # asks for anything not given
+    ./configure.py                              # full-screen wizard (curses)
+    ./configure.py MyTool                       # the wizard, with the name filled in
     ./configure.py MyTool --menu hybrid --caps MIDI,HTTPS --locales en,pl --yes
 
 The app is written to ../MyTool, next to the template and to MTEngineSDL. The
@@ -9,12 +10,13 @@ template is never modified. Standard library only.
 """
 import argparse, json, os, re, shutil, subprocess, sys, tempfile, time, uuid
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from pathlib import Path
 
 VERSION = "1"
 HERE = Path(__file__).resolve().parent
 TOKEN = "TemplateApp"
-TEMPLATE_ONLY = ("configure.py", "tests/configure/", ".github/workflows/configure.yml", "specs/")
+TEMPLATE_ONLY = ("configure.py", "configure_tui.py", "tests/configure/", ".github/workflows/configure.yml", "specs/")
 NAME_RE = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 BUNDLE_RE = re.compile(r"^[a-z][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+$")
 FOLDER_RE = re.compile(r"^[A-Za-z0-9._-]+$")
@@ -74,6 +76,7 @@ def parse_args(argv):
     ap.add_argument("--no-ci", action="store_true", help="drop .github/workflows")
     ap.add_argument("--no-git", action="store_true", help="do not git init / commit")
     ap.add_argument("--yes", action="store_true", help="never prompt; use defaults for anything not given")
+    ap.add_argument("--plain", action="store_true", help="ask line by line instead of the full-screen wizard")
     ap.add_argument("--template", type=Path, default=HERE, help=argparse.SUPPRESS)
     return ap.parse_args(argv)
 
@@ -186,7 +189,9 @@ def locate_engine(o):
             f"    git -C {o.engine} checkout {ref.removeprefix('origin/')}")
     try:
         head = subprocess.run(["git", "-C", str(o.engine), "rev-parse", "HEAD"], capture_output=True, text=True, check=True).stdout.strip()
-        want = subprocess.run(["git", "-C", str(o.engine), "rev-parse", ref], capture_output=True, text=True).stdout.strip()
+        # --verify --quiet: an unknown ref prints nothing (plain rev-parse echoes the name back).
+        want = subprocess.run(["git", "-C", str(o.engine), "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+                              capture_output=True, text=True).stdout.strip()
         if want and head != want:
             print(f"warning: MTEngineSDL is at {head[:12]}, not at MTENGINE_REF {ref} ({want[:12]}); "
                   "the app is generated against the engine you have, CI builds against MTENGINE_REF", file=sys.stderr)
@@ -636,12 +641,36 @@ def generate(o):
     return final_paths(o, links), final_paths(o, execs)
 
 
+def load_tui():
+    """The wizard module, or None where curses is missing (Windows' Python)."""
+    try:
+        import curses  # noqa: F401
+    except ImportError:
+        print("note: the full-screen wizard needs curses; on Windows: py -m pip install windows-curses\n"
+              "      asking line by line instead.", file=sys.stderr)
+        return None
+    sys.path.insert(0, str(HERE))
+    import configure_tui
+    return configure_tui
+
+
 def main(argv=None):
     if sys.version_info < (3, 9):
         sys.exit("configure.py needs Python 3.9+")
     try:
         ns = parse_args(sys.argv[1:] if argv is None else argv)
-        o = resolve_options(ns, interactive=sys.stdin.isatty())
+        interactive = sys.stdin.isatty()
+        tui = None if ns.yes or ns.plain or not (interactive and sys.stdout.isatty()) else load_tui()
+        if tui:
+            template = ns.template.resolve()
+            engine = template.parent / "MTEngineSDL"
+            vocab = locate_engine(SimpleNamespace(engine=engine, engine_ref=ns.engine_ref or DEFAULT_ENGINE_REF))
+            o = tui.run(sys.modules[__name__], ns, template, engine, vocab)
+            if o is None:
+                print("cancelled; nothing was created", file=sys.stderr)
+                return 1
+        else:
+            o = resolve_options(ns, interactive=interactive)
         validate(o)
         links, execs = generate(o)
         if o.git:

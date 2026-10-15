@@ -15,7 +15,7 @@ class CopyRenameTest(unittest.TestCase):
         (self.tpl / "LICENSE").write_bytes(b"MIT\r\n")
         git(self.tpl, "commit", "-qam", "crlf")
         cfg.copy_tree(self.o, self.stage)
-        for p in ("configure.py", "tests/configure/test_x.py", ".github/workflows/configure.yml", "specs/superpowers/specs/x.md"):
+        for p in ("configure.py", "configure_tui.py", "tests/configure/test_x.py", ".github/workflows/configure.yml", "specs/superpowers/specs/x.md"):
             self.assertFalse((self.stage / p).exists(), p)
         self.assertTrue((self.stage / ".github/workflows/build-linux.yml").exists())
         self.assertEqual((self.stage / "LICENSE").read_bytes(), b"MIT\r\n")
