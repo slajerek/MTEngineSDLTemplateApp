@@ -49,6 +49,12 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual(plist.count("<string>R&amp;D &lt;Tool&gt;</string>"), 2)
         self.assertIn("Name=R&D <Tool>\n", (self.stage / "platform/Linux/com.acme.mytool.desktop").read_text())
 
+    def test_engine_ref_in_a_crlf_checkout(self):
+        # A Windows checkout with core.autocrlf has CRLF in MTENGINE_REF.
+        (self.stage / "MTENGINE_REF").write_bytes(b"# comment\r\norigin/master\r\n")
+        cfg.apply_values(self.o, self.stage, "MT_CAP_MIDI=1\n")
+        self.assertEqual((self.stage / "MTENGINE_REF").read_bytes(), b"# comment\r\norigin/devel\r\n")
+
     def test_line_endings_untouched(self):
         cfg.apply_values(self.o, self.stage, "MT_CAP_MIDI=1\r\n")
         self.assertEqual((self.stage / "platform/Windows/MyTool.rc.crlf").read_bytes(),

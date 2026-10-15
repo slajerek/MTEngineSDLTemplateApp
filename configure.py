@@ -428,7 +428,7 @@ def apply_values(o, staging, manifest_text):
     for key in ("CFBundleName", "CFBundleDisplayName"):
         _sub_once(plist, rf"(<key>{key}</key>\s*<string>)[^<]*(</string>)",
                   lambda m: m.group(1) + xml(o.title) + m.group(2), key)
-    _sub_once(staging / f"platform/Linux/{o.bundle_id}.desktop", r"(?m)^Name=.*$",
+    _sub_once(staging / f"platform/Linux/{o.bundle_id}.desktop", r"(?m)^Name=[^\r\n]*",
               lambda m: "Name=" + o.title, ".desktop Name=")
 
     pbx = staging / f"platform/MacOS/{name}.xcodeproj/project.pbxproj"
@@ -436,7 +436,9 @@ def apply_values(o, staging, manifest_text):
 
     _write(staging / "mtengine.caps", manifest_text)
     # Only the value line: the comment above it explains branch vs pin.
-    _sub_once(staging / "MTENGINE_REF", r"(?m)^(?![ \t]*#)[ \t]*\S+[ \t]*$", lambda m: o.engine_ref, "the MTENGINE_REF line")
+    # \r?: on Windows git checks the template out with CRLF; keep the file's line ending.
+    _sub_once(staging / "MTENGINE_REF", r"(?m)^(?![ \t]*#)[ \t]*[^\s#]\S*[ \t]*(\r?)$",
+              lambda m: o.engine_ref + m.group(1), "the MTENGINE_REF line")
 
     en_path = staging / "assets/locale/en.json"
     # The About window shows app.title: it is the --title, not the class name.
